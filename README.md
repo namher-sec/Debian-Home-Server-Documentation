@@ -201,6 +201,30 @@ sudo cryptsetup luksHeaderRestore /dev/sdX \
 
 Mounting is driven by `/etc/crypttab` (LUKS UUID → mapper name) and `/etc/fstab` (mapper device → mount point). See [Phase 7](#phase-7--configure-crypttab) for exact setup.
 
+## 🔌 Accessing External USB Drives
+
+```bash
+# Identify the drive by model/serial (never trust /dev/sdX alone)
+lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE,MOUNTPOINTS,TRAN
+
+# Open (decrypt) the LUKS container
+sudo cryptsetup open /dev/sdX storage-name   # use 'backups' for the PM871a
+
+# Mount
+sudo mkdir -p /mnt/storage-name
+sudo mount /dev/mapper/storage-name /mnt/storage-name
+
+# Verify
+lsblk -f
+df -h
+
+# When done — unmount and close before disconnecting
+sudo umount /mnt/storage-name
+sudo cryptsetup close storage-name
+```
+
+> If the drive is already in `/etc/crypttab`/`/etc/fstab`, just run `sudo mount /mnt/storage-name` after plugging it in — it'll prompt for the passphrase and mount automatically via its LUKS UUID.
+
 ---
 
 ## 🌐 Networking
