@@ -33,7 +33,7 @@ The server intentionally avoids RAID, LVM, ZFS, or storage pooling. Each SSD is 
 - [Docker Directory Structure](#-docker-directory-structure)
 - [Currently Running Services](#-currently-running-services)
 - [Planned Services](#-planned-services)
-- [Backup Strategy](#-backup-strategy)
+- [Automated Encrypted Backups](#-automated-encrypted-backups)
 - [Security & Optimization Setup](#-security--optimization-setup)
 - [Power Management](#-power-management)
 - [Rebuild Procedure](#-rebuild-procedure)
@@ -42,7 +42,6 @@ The server intentionally avoids RAID, LVM, ZFS, or storage pooling. Each SSD is 
 - [Troubleshooting](#-troubleshooting)
 - [Useful Commands](#-useful-commands)
 - [Secrets Policy](#-secrets-policy)
-- [Repository Structure](#-repository-structure)
 - [Installation History](#-installation-history)
 - [License](#-license)
 
@@ -296,28 +295,67 @@ All services are containerized using **Docker** and **Docker Compose**, managed 
 - [ ] **Vaultwarden** — self-hosted password manager
 - [ ] **Homepage / Dashy** — central dashboard for launching all web apps
 - [ ] **Joplin** (Secure note-taking and to-do app)
-      
+
 ---
 
-## 💾 Backup Strategy
+## 💾 Automated Encrypted Backups
 
-The Samsung PM871a (`/mnt/backups`) is dedicated to backups only.
+The Samsung PM871a is used as an encrypted offline backup drive.
 
-**Must be backed up:**
+When the drive is unlocked and mounted, `systemd` automatically starts the backup service:
 
-```text
-/opt/docker/          # Compose files, service config, scripts
+- Docker configuration files
+- Nextcloud files and application data
+- Nextcloud MariaDB database
+- Important system configuration files
+- `rsync` is used for incremental backups, so unchanged files are not recopied
+
+### Backup Procedure
+
+Unlock and mount the PM871a:
+
+```bash
+sudo cryptsetup open /dev/sdd backups
+sudo mount /mnt/backups
 ```
 
-**Nextcloud specifically:**
+**That's it.** The backup starts automatically.
 
-- Application data (files/photos/videos)
-- Database
-- Configuration
+Monitor the backup with:
 
-LUKS headers are backed up **separately** (offline media) and must **not** be placed in the normal server backup.
+```bash
+sudo journalctl -u home-server-backup.service -f
+```
 
-> 📝 Document the actual backup schedule/method here once automated (e.g. cron + rsync/restic script, retention policy, and how to verify a backup is restorable).
+When it's finished:
+
+```bash
+systemctl status home-server-backup.service --no-pager
+```
+
+Then safely disconnect:
+
+```bash
+sudo systemctl stop home-server-backup.service
+sudo umount /mnt/backups
+sudo cryptsetup close backups
+```
+
+The PM871a can then be physically disconnected and stored separately.
+
+### Backup Script
+
+The backup script is located at:
+
+```text
+/usr/local/sbin/home-server-backup
+```
+
+The systemd service is:
+
+```text
+/etc/systemd/system/home-server-backup.service
+```
 
 ---
 
