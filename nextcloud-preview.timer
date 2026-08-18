@@ -1,5 +1,5 @@
 [Unit]
-Description=Run Nextcloud Preview Generator every 10 minutes
+Description=Run Nextcloud Preview Generator daily
 
 [Timer]
 OnCalendar=daily
