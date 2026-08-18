@@ -2,7 +2,7 @@
 Description=Run Nextcloud Preview Generator every 10 minutes
 
 [Timer]
-OnCalendar=*:0/10
+OnCalendar=daily
 Persistent=true
 
 [Install]
