@@ -5,9 +5,16 @@
 ![Linux](https://img.shields.io/badge/Kernel-Linux-FCC624?style=flat&logo=linux&logoColor=black)
 ![Docker](https://img.shields.io/badge/Container-Docker-2496ED?style=flat&logo=docker&logoColor=white)
 ![Tailscale](https://img.shields.io/badge/Mesh-Tailscale-242424?style=flat&logo=tailscale&logoColor=white)
+
+![AdGuard Home](https://img.shields.io/badge/DNS-AdGuard%20Home-68BC71?style=flat&logo=adguard&logoColor=white)
+![Nextcloud](https://img.shields.io/badge/Cloud-Nextcloud-0082C9?style=flat&logo=nextcloud&logoColor=white)
 ![Portainer](https://img.shields.io/badge/Manage-Portainer-13BEF9?style=flat&logo=portainer&logoColor=white)
 ![Beszel](https://img.shields.io/badge/Stats-Beszel-10B981?style=flat&logo=beszel&logoColor=white)
-![Nextcloud](https://img.shields.io/badge/Cloud-Nextcloud-0082C9?style=flat&logo=nextcloud&logoColor=white)
+![Stirling PDF](https://img.shields.io/badge/PDF-Stirling%20PDF-FF6B35?style=flat&logo=adobeacrobatreader&logoColor=white)
+![Firefly III](https://img.shields.io/badge/Finance-Firefly%20III-7C3AED?style=flat&logo=firefly&logoColor=white)
+
+![MariaDB](https://img.shields.io/badge/Database-MariaDB-003545?style=flat&logo=mariadb&logoColor=white)
+![Redis](https://img.shields.io/badge/Cache-Redis-DC382D?style=flat&logo=redis&logoColor=white)
 
 
 Welcome to my home server repository! This repo documents my homelab setup, network architecture, and self-hosted services running on Debian Linux — hardware, storage, encryption, networking, Docker services, backup strategy, security hardening, and a complete rebuild procedure.
