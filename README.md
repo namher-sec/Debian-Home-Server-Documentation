@@ -263,38 +263,42 @@ Docker Compose is used for every service (not standalone `docker run`) so config
 
 ## 📂 Docker Directory Structure
 
+Docker Compose services are organized into separate directories under `/opt/docker/`. Each service has its own `compose.yaml`.
+
 ```text
 /opt/docker/
 ├── adguard/
 ├── beszel/
+├── firefly-iii/
 ├── nextcloud/
 ├── portainer/
-└── uptime-kuma/
+├── stirling-pdf/
 ```
-
-Each service has its own `compose.yaml`. The repo stores Compose files and docs — **not** private application data or secrets (`.env` files are gitignored).
 
 ---
 
 ## 🚀 Currently Running Services
 
-All services are containerized using **Docker** and **Docker Compose**, managed behind a strict UFW firewall.
+All services are containerized using Docker and Docker Compose, managed behind a strict UFW firewall.
 
-| Service | Category | Deployment | Description |
-| :--- | :--- | :--- | :--- |
-| **Tailscale** | Networking | Native Service | Encrypted mesh VPN for secure remote access without open ports |
-| **AdGuard Home** | Network / Security | Docker | Network-wide DNS ad-blocking and tracking sinkhole |
-| **Nextcloud** | Cloud & Storage | Docker | Self-hosted personal cloud storage, file sync, and backup |
-| **Beszel** | Telemetry / Stats | Docker | Lightweight server resource monitor (CPU, RAM, GPU, Docker, Temps) communicating via Unix socket |
-| **Portainer** | Management | Docker | Web-based visual management UI for Docker containers, images, volumes, and stacks |
+| Service | Category | Deployment | Port | Description |
+|---|---|---|---:|---|
+| Tailscale | Networking | Native Service | — | Encrypted mesh VPN for secure remote access without open ports |
+| AdGuard Home | Network / Security | Docker | — | Network-wide DNS ad-blocking and tracking sinkhole |
+| Nextcloud | Cloud & Storage | Docker | `8085` | Self-hosted personal cloud storage, file sync, and backup |
+| Beszel | Telemetry / Stats | Docker | `8090` | Lightweight server resource monitoring for CPU, RAM, GPU, temperatures, and Docker |
+| Portainer | Management | Docker | `9443` | Web-based management UI for Docker containers, images, volumes, and stacks |
+| Stirling PDF | Productivity | Docker | `8080` | Self-hosted web-based PDF toolkit for conversion, editing, merging, splitting, OCR, and other PDF operations |
+| Firefly III | Finance | Docker | `8082` | Self-hosted personal finance manager for tracking accounts, transactions, budgets, and expenses |
 
 ---
 
 ## 🔮 Planned Services
 
-- [ ] **Vaultwarden** — self-hosted password manager
-- [ ] **Homepage / Dashy** — central dashboard for launching all web apps
-- [ ] **Joplin** (Secure note-taking and to-do app)
+  * [ ] Vaultwarden — self-hosted password manager
+  * [ ] Homepage / Dashy — central dashboard for launching all web apps
+  * [ ] Joplin — self-hosted notes and to-do application
+  * [ ] RSS reader — self-hosted RSS feed aggregation
 
 ---
 
