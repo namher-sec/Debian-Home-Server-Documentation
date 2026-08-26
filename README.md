@@ -7,6 +7,8 @@
 ![Tailscale](https://img.shields.io/badge/Mesh-Tailscale-242424?style=flat&logo=tailscale&logoColor=white)
 
 ![AdGuard Home](https://img.shields.io/badge/DNS-AdGuard%20Home-68BC71?style=flat&logo=adguard&logoColor=white)
+![Caddy](https://img.shields.io/badge/Proxy-Caddy-1F88C0?style=flat&logo=caddy&logoColor=white)
+![Vaultwarden](https://img.shields.io/badge/Password%20Manager-Vaultwarden-175DDC?style=flat&logo=bitwarden&logoColor=white)
 ![Nextcloud](https://img.shields.io/badge/Cloud-Nextcloud-0082C9?style=flat&logo=nextcloud&logoColor=white)
 ![Portainer](https://img.shields.io/badge/Manage-Portainer-13BEF9?style=flat&logo=portainer&logoColor=white)
 ![Beszel](https://img.shields.io/badge/Stats-Beszel-10B981?style=flat&logo=beszel&logoColor=white)
@@ -36,6 +38,8 @@ The server intentionally avoids RAID, LVM, ZFS, or storage pooling. Each SSD is 
 - [Filesystem & Mount Points](#-filesystem--mount-points)
 - [Networking](#-networking)
 - [Tailscale](#-tailscale)
+- [Caddy + HTTPS](#-caddy--https)
+- [Vaultwarden](#-vaultwarden)
 - [Docker](#-docker)
 - [Docker Directory Structure](#-docker-directory-structure)
 - [Currently Running Services](#-currently-running-services)
@@ -49,7 +53,6 @@ The server intentionally avoids RAID, LVM, ZFS, or storage pooling. Each SSD is 
 - [Troubleshooting](#-troubleshooting)
 - [Useful Commands](#-useful-commands)
 - [Secrets Policy](#-secrets-policy)
-- [Installation History](#-installation-history)
 - [License](#-license)
 
 ---
@@ -97,7 +100,7 @@ Each additional SSD can be encrypted, mounted, disconnected, replaced, and resto
 
 ---
 
-## 🗄️ Disk Layout
+## Disk Layout
 
 ### 1. Lexar 512 GB — Main System Drive
 
@@ -264,50 +267,347 @@ tailscale ip
 
 ---
 
+## 🔒 Caddy + HTTPS
+ 
+[Caddy](https://caddyserver.com/) is used as a reverse proxy for Vaultwarden.
+ 
+The current setup uses the server's Tailscale MagicDNS hostname:
+ 
+```text
+<your-server>.tail<tailnet-id>.ts.net
+```
+ 
+Caddy terminates HTTPS and forwards the request internally to the Vaultwarden container over the Docker network.
+ 
+### Architecture
+ 
+```text
+Client
+   │
+   │ Tailscale
+   ▼
+<your-server>.tail<tailnet-id>.ts.net
+   │
+   ▼
+Caddy
+   │
+   │ Docker network: caddy_proxy
+   ▼
+Vaultwarden
+   │
+   ▼
+Vaultwarden application
+```
+ 
+Caddy and Vaultwarden are connected to the same dedicated Docker network:
+ 
+```text
+caddy_proxy
+```
+ 
+This allows Caddy to reach Vaultwarden using the Docker container name instead of exposing Vaultwarden directly to the host.
+ 
+### Docker Network
+ 
+The shared reverse-proxy network is:
+ 
+```text
+caddy_proxy
+```
+ 
+Inspect it with:
+ 
+```bash
+sudo docker network inspect caddy_proxy
+```
+ 
+Expected containers include:
+ 
+```text
+caddy
+vaultwarden
+```
+ 
+### Caddy Configuration
+ 
+The Caddy configuration is stored under:
+ 
+```text
+/opt/docker/caddy/conf/Caddyfile
+```
+ 
+Current configuration:
+ 
+```caddyfile
+<your-server>.tail<tailnet-id>.ts.net{
+    reverse_proxy vaultwarden:80
+}
+```
+ 
+Caddy terminates HTTPS for the Tailscale hostname and reverse proxies requests to Vaultwarden over the internal Docker network.
+
+Reload the configuration after making changes:
+ 
+```bash
+cd /opt/docker/caddy
+sudo docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+```
+ 
+Check the configuration:
+ 
+```bash
+sudo docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
+```
+ 
+Check Caddy logs:
+ 
+```bash
+sudo docker logs caddy --tail 50
+```
+ 
+### Caddy Docker Deployment
+ 
+Caddy is deployed using Docker Compose:
+ 
+```text
+/opt/docker/caddy/
+├── compose.yaml
+└── conf/
+    └── Caddyfile
+```
+ 
+Caddy exposes only HTTPS:
+ 
+```text
+443/tcp
+443/udp
+```
+ 
+Port 80 is not used as the public application endpoint.
+ 
+### Important Network Design
+ 
+Vaultwarden does not need to publish its HTTP port to the host.
+ 
+Instead of:
+ 
+```yaml
+ports:
+  - "8080:80"
+```
+ 
+Vaultwarden is connected to the internal Docker network:
+ 
+```yaml
+networks:
+  - caddy_proxy
+```
+ 
+Caddy then accesses:
+ 
+```text
+vaultwarden:80
+```
+ 
+internally.
+ 
+This reduces unnecessary host-level port exposure.
+ 
+---
+ 
+## 🔐 Vaultwarden
+ 
+Vaultwarden is the self-hosted password manager used on the server.
+ 
+It is compatible with Bitwarden clients and stores the user's password vault on the home server.
+ 
+### Access
+ 
+Vaultwarden is accessed through the Caddy HTTPS reverse proxy:
+ 
+```text
+<your-server>.tail<tailnet-id>.ts.net
+```
+ 
+Access requires connectivity to the Tailscale network.
+ 
+There is no router port forwarding for Vaultwarden.
+ 
+```text
+Internet
+   │
+   X
+   │
+   │ No direct inbound port forwarding
+   │
+Tailscale
+   │
+   ▼
+Debian Home Server
+   │
+   ▼
+Caddy :443
+   │
+   ▼
+Vaultwarden :80
+```
+ 
+### Registration
+ 
+Initial account registration was enabled during setup.
+ 
+After the account was created and the existing Bitwarden vault was imported, new user registration was disabled.
+ 
+This prevents unknown users from creating accounts on the Vaultwarden instance.
+ 
+### Password Vault
+ 
+The existing Bitwarden password vault was imported into Vaultwarden.
+ 
+Vaultwarden should be treated as sensitive infrastructure.
+ 
+The following should never be committed to Git:
+ 
+- Vaultwarden database
+- Vaultwarden attachments
+- User passwords
+- Vaultwarden environment secrets
+- Admin tokens
+- Encryption keys
+- Backup files containing vault data
+### Admin Panel
+ 
+The Vaultwarden admin interface is disabled unless explicitly required.
+ 
+This reduces the exposed attack surface.
+ 
+If the admin interface is enabled temporarily for maintenance, it should be disabled again afterward.
+ 
+### Security
+ 
+The Vaultwarden deployment follows these principles:
+ 
+- HTTPS through Caddy
+- Tailscale-only remote access
+- No router port forwarding
+- Vaultwarden not directly published to the host
+- Dedicated Docker reverse-proxy network
+- Registration disabled after initial account creation
+- Strong master password
+- Argon2id used for password hashing where supported/configured
+- Secrets kept outside Git
+- Regular backups of Vaultwarden data
+- Caddy handles HTTPS
+- Vaultwarden is not directly exposed on a host port
+### Backup Considerations
+ 
+Vaultwarden data must be included in the server backup strategy.
+ 
+The backup should include the persistent Vaultwarden application data/database.
+ 
+Because the vault contains highly sensitive information, backups must remain encrypted and must never be uploaded to a public repository.
+ 
+---
+
+
 ## 🐳 Docker
-
+ 
 Docker Compose is used for every service (not standalone `docker run`) so configuration is reproducible and portable to another machine/distro.
-
-## 📂 Docker Directory Structure
-
-Docker Compose services are organized into separate directories under `/opt/docker/`. Each service has its own `compose.yaml`.
-
+ 
+### Reverse Proxy Network
+ 
+A dedicated external Docker network is used for services that need to communicate with Caddy:
+ 
+```text
+caddy_proxy
+```
+ 
+Create it if it does not already exist:
+ 
+```bash
+sudo docker network create caddy_proxy
+```
+ 
+Services that should be accessible through Caddy can then join this network.
+ 
+For example:
+ 
+```yaml
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+ 
+    networks:
+      - caddy_proxy
+ 
+networks:
+  caddy_proxy:
+    external: true
+```
+ 
+Caddy can then reach the service by its Docker container name:
+ 
+```text
+vaultwarden:80
+```
+ 
+Only services intended to be reverse-proxied should be connected to `caddy_proxy`.
+ 
+### 📂 Docker Directory Structure
+ 
+Docker Compose services are organized into separate directories under `/opt/docker/`.
+ 
 ```text
 /opt/docker/
 ├── adguard/
 ├── beszel/
+├── caddy/
+│   ├── compose.yaml
+│   └── conf/
+│       └── Caddyfile
 ├── firefly-iii/
 ├── nextcloud/
 ├── portainer/
 ├── stirling-pdf/
+└── vaultwarden/
 ```
-
+ 
+Caddy and Vaultwarden are separate Compose projects but communicate through the shared external Docker network:
+ 
+```text
+caddy_proxy
+```
+ 
 ---
 
+
 ## 🚀 Currently Running Services
-
+ 
 All services are containerized using Docker and Docker Compose, managed behind a strict UFW firewall.
-
+ 
 | Service | Category | Deployment | Port | Description |
 |---|---|---|---:|---|
 | Tailscale | Networking | Native Service | — | Encrypted mesh VPN for secure remote access without open ports |
+| Caddy | Reverse Proxy / HTTPS | Docker | `443` | Reverse proxy providing HTTPS access to Vaultwarden |
+| Vaultwarden | Password Manager | Docker | Internal `80` | Self-hosted Bitwarden-compatible password manager |
 | AdGuard Home | Network / Security | Docker | — | Network-wide DNS ad-blocking and tracking sinkhole |
 | Nextcloud | Cloud & Storage | Docker | `8085` | Self-hosted personal cloud storage, file sync, and backup |
 | Beszel | Telemetry / Stats | Docker | `8090` | Lightweight server resource monitoring for CPU, RAM, GPU, temperatures, and Docker |
 | Portainer | Management | Docker | `9443` | Web-based management UI for Docker containers, images, volumes, and stacks |
 | Stirling PDF | Productivity | Docker | `8080` | Self-hosted web-based PDF toolkit for conversion, editing, merging, splitting, OCR, and other PDF operations |
 | Firefly III | Finance | Docker | `8082` | Self-hosted personal finance manager for tracking accounts, transactions, budgets, and expenses |
-
+ 
 ---
-
+ 
 ## 🔮 Planned Services
-
-  * [ ] Vaultwarden — self-hosted password manager
-  * [ ] Homepage / Dashy — central dashboard for launching all web apps
-  * [ ] Joplin — self-hosted notes and to-do application
-  * [ ] RSS reader — self-hosted RSS feed aggregation
-
+ 
+- [ ] Homepage / Dashy — central dashboard for launching all web apps
+- [ ] Joplin — self-hosted notes and to-do application
+- [ ] RSS reader — self-hosted RSS feed aggregation
 ---
+
 
 ## 💾 Automated Encrypted Backups
 
@@ -380,6 +680,12 @@ The systemd service is:
 - **Offline LUKS recovery** — headers stored away from the server.
 - **Secrets excluded from Git** — passwords, API keys, LUKS headers, credentials never committed.
 - **Beszel socket interconnect** — Beszel Hub and Agent communicate via a host-mounted Unix socket (`./beszel_socket/beszel.sock`) for firewall-free, zero-latency metric streaming instead of a network port.
+- **Reverse proxy isolation** — Vaultwarden is not directly published to a host port; Caddy accesses it through the dedicated `caddy_proxy` Docker network.
+- **HTTPS** — Vaultwarden traffic is encrypted using HTTPS through Caddy.
+- **Tailscale-only access** — Vaultwarden is accessible through the server's Tailscale hostname without router port forwarding.
+- **Registration disabled** — Vaultwarden account registration is disabled after the initial account was created.
+- **Minimal proxy exposure** — Caddy exposes HTTPS on port `443`; backend application ports remain internal where possible.
+- **Separate Docker network** — Caddy and proxied applications communicate through the dedicated `caddy_proxy` network.
 
 ### Firewall (UFW)
 
@@ -662,6 +968,105 @@ For AdGuard Home, only point network DNS at it after confirming it's working cor
 
 Portainer should be verified reachable only via the trusted network/Tailscale — never expose it publicly.
 
+### Phase 11A — Configure Caddy Reverse Proxy
+ 
+Create the shared Docker network:
+ 
+```bash
+sudo docker network create caddy_proxy
+```
+ 
+Deploy Caddy:
+ 
+```bash
+cd /opt/docker/caddy
+sudo docker compose up -d
+```
+ 
+Verify:
+ 
+```bash
+sudo docker compose ps
+sudo docker logs caddy --tail 50
+```
+ 
+Create the Caddy configuration:
+ 
+```text
+/opt/docker/caddy/conf/Caddyfile
+```
+ 
+Example:
+ 
+```caddyfile
+<your-server>.tail<tailnet-id>.ts.net{
+    reverse_proxy vaultwarden:80
+}
+```
+ 
+Validate:
+ 
+```bash
+sudo docker compose exec caddy \
+    caddy validate --config /etc/caddy/Caddyfile
+```
+ 
+Reload:
+ 
+```bash
+sudo docker compose exec caddy \
+    caddy reload --config /etc/caddy/Caddyfile
+```
+ 
+### Phase 11B — Deploy Vaultwarden
+ 
+Deploy Vaultwarden separately:
+ 
+```bash
+cd /opt/docker/vaultwarden
+sudo docker compose up -d
+```
+ 
+Connect Vaultwarden to the shared Caddy network:
+ 
+```yaml
+networks:
+  caddy_proxy:
+    external: true
+```
+ 
+and:
+ 
+```yaml
+services:
+  vaultwarden:
+    networks:
+      - caddy_proxy
+```
+ 
+Verify that both containers are connected:
+ 
+```bash
+sudo docker network inspect caddy_proxy
+```
+ 
+Expected:
+ 
+```text
+caddy
+vaultwarden
+```
+ 
+Vaultwarden should not need a published host port when Caddy is used as the reverse proxy.
+ 
+Verify HTTPS access through:
+ 
+```text
+<your-server>.tail<tailnet-id>.ts.net
+```
+ 
+After the initial Vaultwarden account is created and configured, disable public registration.
+
 ### Phase 12 — Configure Firewall, Radios, and Power
 
 - Set up UFW per [Firewall (UFW)](#firewall-ufw) above.
@@ -742,6 +1147,16 @@ Quick pointers for common issues — expand this section as real problems come u
 | Lid closing suspends the server unexpectedly | Re-check `/etc/systemd/logind.conf` values, confirm `systemctl restart systemd-logind` was applied |
 | Wi-Fi/Bluetooth re-appears after a kernel update | Re-check `/etc/modprobe.d/blacklist-radios.conf` and re-run `update-initramfs -u` |
 
+| Issue | Resolution |
+|---|---|
+| Caddy returns `502 Bad Gateway` | Check that the backend container is running and connected to `caddy_proxy`; verify the backend name/port in the Caddyfile |
+| Vaultwarden cannot be reached | Check `docker ps`, `docker network inspect caddy_proxy`, and Caddy logs |
+| Caddy configuration changed but old behavior remains | Validate the Caddyfile and reload Caddy with `caddy reload` |
+| HTTPS hostname does not resolve | Verify Tailscale is running and MagicDNS is enabled; confirm the server's Tailscale hostname with `tailscale status` |
+| Vaultwarden registration should remain disabled | Verify the Vaultwarden registration setting/environment configuration |
+| Vaultwarden is accidentally exposed on a host port | Check `docker ps` and the Vaultwarden Compose file; remove unnecessary `ports:` mappings |
+
+
 ---
 
 ## 🧪 Useful Commands
@@ -778,6 +1193,23 @@ sudo ufw status verbose
 rfkill list
 sudo tlp-stat -p
 ```
+```bash
+# Caddy
+cd /opt/docker/caddy
+sudo docker compose ps
+sudo docker compose logs --tail 50
+sudo docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
+sudo docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+ 
+# Reverse proxy network
+sudo docker network inspect caddy_proxy
+ 
+# Vaultwarden
+cd /opt/docker/vaultwarden
+sudo docker compose ps
+sudo docker compose logs --tail 50
+```
+
 
 ---
 
@@ -813,28 +1245,6 @@ luks-headers/
 backup/
 backups/
 ```
-
----
-
-
-
-## 📅 Installation History
-
-### 2026-08-11 — Server Rebuild
-
-- Fresh Debian 13 installation
-- Lexar 512 GB SSD selected as primary system drive
-- Full-disk LUKS encryption enabled on the system
-- Samsung 860 EVO mSATA, OCZ Vertex 450, and Samsung PM871a configured with LUKS + ext4
-- PM871a reserved for backups
-- Additional SSDs mounted independently
-- Docker + Tailscale (with Tailscale SSH) installed
-- Nextcloud deployment started
-- Docker Compose adopted as the standard deployment method
-- LUKS headers backed up to offline recovery media
-- UFW firewall configured (Tailscale + LAN subnet only)
-- Wi-Fi, Bluetooth, and discrete GPU disabled for power efficiency
-- Uptime Kuma, ntfy, Beszel, and Portainer deployed for monitoring/management
 
 ---
 
