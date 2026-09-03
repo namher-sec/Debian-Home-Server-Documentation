@@ -13,7 +13,6 @@
 ![Portainer](https://img.shields.io/badge/Manage-Portainer-13BEF9?style=flat&logo=portainer&logoColor=white)
 ![Beszel](https://img.shields.io/badge/Stats-Beszel-10B981?style=flat&logo=beszel&logoColor=white)
 ![Stirling PDF](https://img.shields.io/badge/PDF-Stirling%20PDF-FF6B35?style=flat&logo=adobeacrobatreader&logoColor=white)
-![Firefly III](https://img.shields.io/badge/Finance-Firefly%20III-7C3AED?style=flat&logo=firefly&logoColor=white)
 
 ![MariaDB](https://img.shields.io/badge/Database-MariaDB-003545?style=flat&logo=mariadb&logoColor=white)
 ![Redis](https://img.shields.io/badge/Cache-Redis-DC382D?style=flat&logo=redis&logoColor=white)
@@ -597,7 +596,6 @@ All services are containerized using Docker and Docker Compose, managed behind a
 | Beszel | Telemetry / Stats | Docker | `8090` | Lightweight server resource monitoring for CPU, RAM, GPU, temperatures, and Docker |
 | Portainer | Management | Docker | `9443` | Web-based management UI for Docker containers, images, volumes, and stacks |
 | Stirling PDF | Productivity | Docker | `8080` | Self-hosted web-based PDF toolkit for conversion, editing, merging, splitting, OCR, and other PDF operations |
-| Firefly III | Finance | Docker | `8082` | Self-hosted personal finance manager for tracking accounts, transactions, budgets, and expenses |
  
 ---
  
