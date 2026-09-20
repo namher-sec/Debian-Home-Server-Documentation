@@ -11,6 +11,8 @@
 ![Vaultwarden](https://img.shields.io/badge/Password%20Manager-Vaultwarden-175DDC?style=flat&logo=bitwarden&logoColor=white)
 ![Nextcloud](https://img.shields.io/badge/Cloud-Nextcloud-0082C9?style=flat&logo=nextcloud&logoColor=white)
 ![Portainer](https://img.shields.io/badge/Manage-Portainer-13BEF9?style=flat&logo=portainer&logoColor=white)
+![Uptime Kuma](https://img.shields.io/badge/Monitoring-Uptime%20Kuma-5CDD8B?style=flat&logo=uptimekuma&logoColor=white)
+![ntfy](https://img.shields.io/badge/Notifications-ntfy-317F6B?style=flat&logo=ntfy&logoColor=white)
 ![Beszel](https://img.shields.io/badge/Stats-Beszel-10B981?style=flat&logo=beszel&logoColor=white)
 ![Stirling PDF](https://img.shields.io/badge/PDF-Stirling%20PDF-FF6B35?style=flat&logo=adobeacrobatreader&logoColor=white)
 
@@ -596,12 +598,14 @@ All services are containerized using Docker and Docker Compose, managed behind a
 | Beszel | Telemetry / Stats | Docker | `8090` | Lightweight server resource monitoring for CPU, RAM, GPU, temperatures, and Docker |
 | Portainer | Management | Docker | `9443` | Web-based management UI for Docker containers, images, volumes, and stacks |
 | Stirling PDF | Productivity | Docker | `8080` | Self-hosted web-based PDF toolkit for conversion, editing, merging, splitting, OCR, and other PDF operations |
+| Uptime Kuma | Monitoring | Docker | `3001` | Self-hosted uptime and service monitoring |
+| ntfy | Notifications | Docker | `8095` | Self-hosted push notification service for monitoring alerts |
+| Dashy | Dashboard | Docker | `8084` | Central dashboard for launching all web apps |
  
 ---
  
 ## 🔮 Planned Services
  
-- [ ] Homepage / Dashy — central dashboard for launching all web apps
 - [ ] Joplin — self-hosted notes and to-do application
 - [ ] RSS reader — self-hosted RSS feed aggregation
 ---
@@ -1153,6 +1157,7 @@ Quick pointers for common issues — expand this section as real problems come u
 | HTTPS hostname does not resolve | Verify Tailscale is running and MagicDNS is enabled; confirm the server's Tailscale hostname with `tailscale status` |
 | Vaultwarden registration should remain disabled | Verify the Vaultwarden registration setting/environment configuration |
 | Vaultwarden is accidentally exposed on a host port | Check `docker ps` and the Vaultwarden Compose file; remove unnecessary `ports:` mappings |
+| Uptime Kuma cannot monitor AdGuard DNS | Verify AdGuard itself with `dig @192.168.0.10 google.com`. If the host can query AdGuard but a Docker container cannot, check UFW. Docker bridge traffic originates from the Docker subnet (e.g. `172.22.0.0/16`) and was blocked by the default `deny (routed)` / host firewall policy. Allow DNS traffic from the relevant Docker subnet on UDP/TCP port 53. |
 
 
 ---
