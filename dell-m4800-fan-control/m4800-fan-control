@@ -1,0 +1,493 @@
+#!/bin/bash
+
+# Dell Precision M4800 fan controller
+#
+# Uses:
+#   - coretemp for CPU temperature
+#   - dell_smm for GPU temperature
+#   - i8kctl for fan control
+#
+# Fan states:
+#   0 = OFF
+#   1 = LOW
+#   2 = HIGH
+#
+# Safety philosophy:
+#   Sensor/control failure => HIGH
+#   Controller shutdown => HIGH
+#
+# IMPORTANT:
+#   dell-bios-fan-control must have disabled BIOS fan control
+#   before this daemon starts.
+
+set -u
+set -o pipefail
+
+###############################################################################
+# Configuration
+###############################################################################
+
+# How often temperatures are checked.
+INTERVAL=3
+
+# Temperature at which fans start running.
+FAN_ON_TEMP=50
+
+# Temperature at which fans go HIGH.
+FAN_HIGH_TEMP=70
+
+# HIGH -> LOW only below this temperature.
+HIGH_TO_LOW_TEMP=60
+
+# LOW -> OFF only below this temperature.
+LOW_TO_OFF_TEMP=47
+
+# Number of consecutive bad sensor readings before declaring failure.
+MAX_SENSOR_FAILURES=3
+
+# Number of failed fan commands before declaring control failure.
+MAX_CONTROL_FAILURES=3
+
+# Commands
+I8KCTL="/usr/bin/i8kctl"
+
+###############################################################################
+# Runtime state
+###############################################################################
+
+CURRENT_LEVEL=-1
+SENSOR_FAILURES=0
+CONTROL_FAILURES=0
+
+###############################################################################
+# Logging
+###############################################################################
+
+log()
+{
+    logger -t m4800-fan-control -- "$*"
+    echo "$(date '+%F %T') $*"
+}
+
+###############################################################################
+# Safety
+###############################################################################
+
+set_fans_high()
+{
+    "$I8KCTL" fan 2 2 >/dev/null 2>&1 || true
+}
+
+safe_exit()
+{
+    log "Controller stopping - setting both fans to HIGH"
+    set_fans_high
+    exit 0
+}
+
+fatal()
+{
+    log "FATAL: $*"
+    log "Setting both fans to HIGH"
+    set_fans_high
+    exit 1
+}
+
+trap safe_exit SIGTERM SIGINT SIGHUP
+
+###############################################################################
+# Dependency checks
+###############################################################################
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This program must run as root."
+    exit 1
+fi
+
+if [ ! -x "$I8KCTL" ]; then
+    fatal "i8kctl not found at $I8KCTL"
+fi
+
+if [ ! -r /proc/i8k ]; then
+    fatal "/proc/i8k is unavailable. Is the Dell SMM/i8k driver loaded?"
+fi
+
+###############################################################################
+# Hardware discovery
+###############################################################################
+
+find_hwmon()
+{
+    local wanted="$1"
+    local h
+
+    for h in /sys/class/hwmon/hwmon*; do
+        [ -r "$h/name" ] || continue
+
+        if [ "$(cat "$h/name" 2>/dev/null)" = "$wanted" ]; then
+            echo "$h"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+DELL_HWMON="$(find_hwmon dell_smm || true)"
+CORETEMP_HWMON="$(find_hwmon coretemp || true)"
+
+if [ -z "$DELL_HWMON" ]; then
+    fatal "dell_smm hwmon device not found"
+fi
+
+if [ -z "$CORETEMP_HWMON" ]; then
+    fatal "coretemp hwmon device not found"
+fi
+
+log "Dell hwmon: $DELL_HWMON"
+log "CPU hwmon:  $CORETEMP_HWMON"
+
+###############################################################################
+# Temperature discovery
+###############################################################################
+
+get_cpu_temp()
+{
+    local value
+    local max=0
+    local file
+
+    # Use all coretemp temp*_input files and take the highest value.
+    for file in "$CORETEMP_HWMON"/temp*_input; do
+        [ -r "$file" ] || continue
+
+        value="$(cat "$file" 2>/dev/null)" || continue
+
+        [[ "$value" =~ ^[0-9]+$ ]] || continue
+
+        if [ "$value" -gt "$max" ]; then
+            max="$value"
+        fi
+    done
+
+    if [ "$max" -eq 0 ]; then
+        return 1
+    fi
+
+    # Convert millidegrees Celsius to Celsius.
+    echo $((max / 1000))
+}
+
+get_gpu_temp()
+{
+    local file
+    local label
+    local value
+    local gpu_temp=0
+
+    # Look for a dell_smm temperature sensor explicitly labelled GPU.
+    for file in "$DELL_HWMON"/temp*_input; do
+        [ -r "$file" ] || continue
+
+        label_file="${file%_input}_label"
+
+        [ -r "$label_file" ] || continue
+
+        label="$(cat "$label_file" 2>/dev/null)"
+
+        if [ "$label" = "GPU" ]; then
+            value="$(cat "$file" 2>/dev/null)" || continue
+
+            if [[ "$value" =~ ^[0-9]+$ ]]; then
+                gpu_temp=$((value / 1000))
+                echo "$gpu_temp"
+                return 0
+            fi
+        fi
+    done
+
+    return 1
+}
+
+get_temperature()
+{
+    local cpu
+    local gpu
+    local highest
+
+    cpu="$(get_cpu_temp)" || return 1
+    gpu="$(get_gpu_temp)" || return 1
+
+    if [ "$cpu" -gt "$gpu" ]; then
+        highest="$cpu"
+    else
+        highest="$gpu"
+    fi
+
+    # Return:
+    # CPU GPU MAX
+    echo "$cpu $gpu $highest"
+}
+
+###############################################################################
+# Fan control
+###############################################################################
+
+set_fans()
+{
+    local level="$1"
+    local result
+    local attempt
+
+    case "$level" in
+        0|1|2)
+            ;;
+        *)
+            log "ERROR: Invalid fan level requested: $level"
+            return 1
+            ;;
+    esac
+
+    # Try the SMM command up to 3 times.
+    # We deliberately do NOT require immediate readback to match,
+    # because some Dell BIOS/SMM implementations report the previous
+    # state immediately after a successful set operation.
+
+    for attempt in 1 2 3; do
+
+        result="$("$I8KCTL" fan "$level" "$level" 2>&1)"
+
+        if [ $? -eq 0 ]; then
+            CONTROL_FAILURES=0
+
+            case "$level" in
+                0)
+                    [ "$CURRENT_LEVEL" != "0" ] && log "Fans: OFF"
+                    ;;
+                1)
+                    [ "$CURRENT_LEVEL" != "1" ] && log "Fans: LOW"
+                    ;;
+                2)
+                    [ "$CURRENT_LEVEL" != "2" ] && log "Fans: HIGH"
+                    ;;
+            esac
+
+            CURRENT_LEVEL="$level"
+
+            # Give the SMM/BIOS a moment to apply the state.
+            sleep 0.2
+
+            return 0
+        fi
+
+        log "WARNING: i8kctl fan $level $level failed (attempt $attempt/3): $result"
+
+        sleep 0.2
+    done
+
+    CONTROL_FAILURES=$((CONTROL_FAILURES + 1))
+
+    return 1
+}
+
+###############################################################################
+# Determine desired fan level
+###############################################################################
+
+calculate_level()
+{
+    local temp="$1"
+
+    # Unknown initial state: choose directly from temperature.
+    if [ "$CURRENT_LEVEL" -eq -1 ]; then
+        if [ "$temp" -ge "$FAN_HIGH_TEMP" ]; then
+            echo 2
+        elif [ "$temp" -ge "$FAN_ON_TEMP" ]; then
+            echo 1
+        else
+            echo 0
+        fi
+        return
+    fi
+
+    case "$CURRENT_LEVEL" in
+
+        2)
+            # Currently HIGH.
+            #
+            # Do not immediately drop to LOW.
+            if [ "$temp" -lt "$HIGH_TO_LOW_TEMP" ]; then
+                echo 1
+            else
+                echo 2
+            fi
+            ;;
+
+        1)
+            # Currently LOW.
+            #
+            # HIGH takes priority.
+            if [ "$temp" -ge "$FAN_HIGH_TEMP" ]; then
+                echo 2
+
+            # Turn completely OFF only after dropping
+            # below the lower hysteresis threshold.
+            elif [ "$temp" -lt "$LOW_TO_OFF_TEMP" ]; then
+                echo 0
+
+            else
+                echo 1
+            fi
+            ;;
+
+        0)
+            # Currently OFF.
+            #
+            # Start LOW when temperature reaches FAN_ON_TEMP.
+            if [ "$temp" -ge "$FAN_HIGH_TEMP" ]; then
+                echo 2
+
+            elif [ "$temp" -ge "$FAN_ON_TEMP" ]; then
+                echo 1
+
+            else
+                echo 0
+            fi
+            ;;
+
+        -1)
+            # Unknown state = choose safely from temperature.
+            if [ "$temp" -ge "$FAN_HIGH_TEMP" ]; then
+                echo 2
+            elif [ "$temp" -ge "$FAN_ON_TEMP" ]; then
+                echo 1
+            else
+                echo 0
+            fi
+            ;;
+
+        *)
+            # Any unexpected state = safest state.
+            echo 2
+            ;;
+    esac
+}
+
+###############################################################################
+# Startup
+###############################################################################
+
+log "=============================================="
+log "Dell Precision M4800 fan controller starting"
+log "=============================================="
+
+log "Configuration:"
+log "  Fan OFF below:        ${LOW_TO_OFF_TEMP}C"
+log "  Fan LOW from:         ${FAN_ON_TEMP}C"
+log "  Fan HIGH from:        ${FAN_HIGH_TEMP}C"
+log "  HIGH -> LOW below:    ${HIGH_TO_LOW_TEMP}C"
+log "  Poll interval:        ${INTERVAL}s"
+
+###############################################################################
+# Initial safety state
+###############################################################################
+
+# Start safely at HIGH while sensors are initialized.
+if ! set_fans 2; then
+    fatal "Unable to set initial HIGH fan state"
+fi
+
+# The first temperature reading will immediately select
+# the appropriate operating level.
+CURRENT_LEVEL=-1
+
+###############################################################################
+# Main loop
+###############################################################################
+
+while true; do
+
+    ###########################################################################
+    # Read temperatures
+    ###########################################################################
+
+    TEMP_DATA="$(get_temperature 2>/dev/null || true)"
+
+    if [ -z "$TEMP_DATA" ]; then
+
+        SENSOR_FAILURES=$((SENSOR_FAILURES + 1))
+
+        log "WARNING: Temperature read failed ($SENSOR_FAILURES/$MAX_SENSOR_FAILURES)"
+
+        # Never reduce cooling when temperature data is unavailable.
+        if [ "$CURRENT_LEVEL" -ne 2 ]; then
+            set_fans 2 || true
+        fi
+
+        if [ "$SENSOR_FAILURES" -ge "$MAX_SENSOR_FAILURES" ]; then
+            fatal "Temperature sensors unavailable"
+        fi
+
+        sleep "$INTERVAL"
+        continue
+    fi
+
+    SENSOR_FAILURES=0
+
+    read -r CPU_TEMP GPU_TEMP MAX_TEMP <<< "$TEMP_DATA"
+
+    ###########################################################################
+    # Sanity checks
+    ###########################################################################
+
+    # Reject obviously invalid temperatures.
+    if [ "$CPU_TEMP" -lt 0 ] || [ "$CPU_TEMP" -gt 120 ]; then
+        log "WARNING: Invalid CPU temperature: ${CPU_TEMP}C"
+        set_fans 2 || true
+        sleep "$INTERVAL"
+        continue
+    fi
+
+    if [ "$GPU_TEMP" -lt 0 ] || [ "$GPU_TEMP" -gt 120 ]; then
+        log "WARNING: Invalid GPU temperature: ${GPU_TEMP}C"
+        set_fans 2 || true
+        sleep "$INTERVAL"
+        continue
+    fi
+
+    ###########################################################################
+    # Calculate desired fan state
+    ###########################################################################
+
+    DESIRED_LEVEL="$(calculate_level "$MAX_TEMP")"
+
+    ###########################################################################
+    # Apply fan state
+    ###########################################################################
+
+    if [ "$DESIRED_LEVEL" != "$CURRENT_LEVEL" ]; then
+
+        if ! set_fans "$DESIRED_LEVEL"; then
+
+            CONTROL_FAILURES=$((CONTROL_FAILURES + 1))
+
+            log "WARNING: Fan control failed ($CONTROL_FAILURES/$MAX_CONTROL_FAILURES)"
+
+            # Immediately go to maximum cooling.
+            set_fans 2 || true
+
+            if [ "$CONTROL_FAILURES" -ge "$MAX_CONTROL_FAILURES" ]; then
+                fatal "Fan control interface is not responding"
+            fi
+        fi
+    fi
+
+    ###########################################################################
+    # Status
+    ###########################################################################
+
+    log "CPU=${CPU_TEMP}C GPU=${GPU_TEMP}C MAX=${MAX_TEMP}C FAN=${CURRENT_LEVEL}"
+
+    sleep "$INTERVAL"
+
+done
