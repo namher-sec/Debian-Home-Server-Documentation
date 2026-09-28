@@ -1,0 +1,12 @@
+[Unit]
+Description=Nextcloud Preview Generator
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/docker/nextcloud
+ExecStart=/usr/bin/docker compose exec -T -u www-data app php -d memory_limit=-1 occ preview:pre-generate
+
+[Install]
+WantedBy=multi-user.target
