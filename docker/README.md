@@ -69,3 +69,38 @@ caddy_proxy
 ```
  
 ---
+
+## 🚫 Secrets Policy
+
+Never commit to this repository:
+
+```text
+Passwords
+LUKS passphrases
+LUKS header backups (*.img)
+.env files containing secrets
+API keys
+Tailscale authentication keys
+Private SSH keys
+TLS private keys
+Nextcloud private data
+Database dumps containing sensitive information
+Personal photos/videos
+```
+
+`.gitignore`:
+
+```gitignore
+.env
+.env.*
+*.key
+*.pem
+*.secret
+*.img
+secrets/
+luks-headers/
+backup/
+backups/
+```
+
+---
