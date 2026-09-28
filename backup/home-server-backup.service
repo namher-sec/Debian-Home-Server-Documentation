@@ -1,0 +1,11 @@
+[Unit]
+Description=Home Server Backup to PM871a
+Requires=mnt-backups.mount
+After=mnt-backups.mount
+ConditionPathIsMountPoint=/mnt/backups
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/home-server-backup
+TimeoutStartSec=6h
