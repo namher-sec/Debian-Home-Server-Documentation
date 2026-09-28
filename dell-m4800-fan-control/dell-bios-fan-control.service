@@ -1,0 +1,15 @@
+[Unit]
+Description=Disable Dell BIOS automatic fan control
+After=local-fs.target
+Before=m4800-fan-control.service
+Conflicts=shutdown.target
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dell-bios-fan-control 0
+ExecStop=/usr/local/bin/dell-bios-fan-control 1
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

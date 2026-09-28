@@ -1,0 +1,17 @@
+[Unit]
+Description=Dell Precision M4800 Fan Controller
+Requires=dell-bios-fan-control.service
+After=dell-bios-fan-control.service
+Conflicts=i8kmon.service
+Before=shutdown.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/m4800-fan-control
+ExecStop=/usr/bin/i8kctl fan 2 2
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
