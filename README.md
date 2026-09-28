@@ -600,13 +600,14 @@ All services are containerized using Docker and Docker Compose, managed behind a
 | Stirling PDF | Productivity | Docker | `8080` | Self-hosted web-based PDF toolkit for conversion, editing, merging, splitting, OCR, and other PDF operations |
 | Uptime Kuma | Monitoring | Docker | `3001` | Self-hosted uptime and service monitoring |
 | ntfy | Notifications | Docker | `8095` | Self-hosted push notification service for monitoring alerts |
-| Dashy | Dashboard | Docker | `8084` | Central dashboard for launching all web apps |
+| Homepage | Dashboard | Docker | `3000` | Central dashboard for launching all web apps |
+| Joplin Server | Note taking | Docker | `22300` | Self-hosted notes and to-do application |
+| Paperless-ngx | Document Management | Docker | `8000` | Open-source document management and archiving system |
  
 ---
  
 ## 🔮 Planned Services
  
-- [ ] Joplin — self-hosted notes and to-do application
 - [ ] RSS reader — self-hosted RSS feed aggregation
 ---
 
