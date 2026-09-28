@@ -37,7 +37,7 @@ This repository documents the server's **architecture, storage, networking, Dock
 | 🌐 [Networking](networking/) | Network configuration, Tailscale, Caddy, HTTPS, and DNS |
 | 🐳 [Docker](docker/) | Docker, Compose structure, networking, storage, and configuration practices |
 | ⚙️ [Services](services/) | Self-hosted services and their current configuration |
-| ⚙️ [Security and Optimazations](security-and-optimizations/) | Security and Optimizations performed on the server |
+| ⚙️ [Security and Optimizations](security-and-optimizations/) | Security and Optimizations performed on the server |
 | 💾 [Backup](backup/) | Automated backups, systemd configuration, and restore procedures |
 | 🌡️ [Fan Control](fan-control/) | Dell M4800 fan control and related systemd services |
 | ☁️ [Nextcloud Preview](nextcloud-preview/) | Automated Nextcloud preview generation |
