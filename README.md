@@ -16,10 +16,6 @@
 ![Beszel](https://img.shields.io/badge/Stats-Beszel-10B981?style=flat&logo=beszel&logoColor=white)
 ![Stirling PDF](https://img.shields.io/badge/PDF-Stirling%20PDF-FF6B35?style=flat&logo=adobeacrobatreader&logoColor=white)
 
-![MariaDB](https://img.shields.io/badge/Database-MariaDB-003545?style=flat&logo=mariadb&logoColor=white)
-![Redis](https://img.shields.io/badge/Cache-Redis-DC382D?style=flat&logo=redis&logoColor=white)
-
-
 Documentation for my personal home server and self-hosted homelab running on Debian Linux.
 
 This repository documents the server's **architecture, storage, networking, Docker environment, self-hosted services, backups, hardware-specific configuration, and recovery procedures**.
