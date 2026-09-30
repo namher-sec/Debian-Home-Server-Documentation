@@ -16,7 +16,13 @@
 ![Beszel](https://img.shields.io/badge/Stats-Beszel-10B981?style=flat&logo=beszel&logoColor=white)
 ![Stirling PDF](https://img.shields.io/badge/PDF-Stirling%20PDF-FF6B35?style=flat&logo=adobeacrobatreader&logoColor=white)
 
-![Home Server Dashboard](assets/Homepage.png)
+<p align="center">
+  <img src="assets/Homepage.png" alt="Home Server Dashboard" width="900">
+</p>
+
+<p align="center">
+  <em>Home server dashboard providing a centralized interface for accessing and monitoring self-hosted services.</em>
+</p>
 
 Documentation for my personal home server and self-hosted homelab running on Debian Linux.
 
@@ -26,9 +32,21 @@ This repository documents the server's **architecture, storage, networking, Dock
 
 ---
 
-![Beszel Server Monitoring](assets/Beszel.png)
+<p align="center">
+  <img src="assets/Beszel.png" alt="Beszel Server Monitoring" width="900">
+</p>
 
-![Uptime Kuma](assets/Uptime-Kuma.png)
+<p align="center">
+  <em>Beszel server monitoring and resource statistics</em>
+</p>
+
+<p align="center">
+  <img src="assets/Uptime-Kuma.png" alt="Uptime Kuma" width="900">
+</p>
+
+<p align="center">
+  <em>Uptime Kuma service availability monitoring</em>
+</p>
 
 ---
 
