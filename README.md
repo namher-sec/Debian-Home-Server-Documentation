@@ -41,7 +41,7 @@ This repository documents the server's **architecture, storage, networking, Dock
 </p>
 
 <p align="center">
-  <img src="assets/Uptime-Kuma.png" alt="Uptime Kuma" width="900">
+  <img src="assets/UptimeKuma.png" alt="Uptime Kuma" width="900">
 </p>
 
 <p align="center">
