@@ -1,11 +1,33 @@
 [Unit]
-Description=Home Server Backup to PM871a
+Description=Home Server Restic Backup
 Requires=mnt-backups.mount
-After=mnt-backups.mount
+After=mnt-backups.mount docker.service
 ConditionPathIsMountPoint=/mnt/backups
 
 [Service]
 Type=oneshot
-RemainAfterExit=yes
-ExecStart=/usr/local/sbin/home-server-backup
 TimeoutStartSec=6h
+
+Environment=HOME=/root
+Environment=XDG_CACHE_HOME=/root/.cache
+
+ExecStartPre=/usr/bin/docker exec -u www-data nextcloud php occ maintenance:mode --on
+
+ExecStart=/bin/sh -c '\
+    set -a; \
+    . /etc/restic-home-server.env; \
+    set +a; \
+    /usr/bin/restic backup \
+        /opt/docker \
+        /var/lib/docker/volumes \
+        /etc \
+        /home \
+        /root \
+        /usr/local \
+'
+
+ExecStopPost=/usr/bin/docker exec -u www-data nextcloud php occ maintenance:mode --off
+
+[Install]
+WantedBy=multi-user.target
+
