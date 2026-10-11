@@ -17,7 +17,9 @@ All services are containerized using Docker and Docker Compose, managed behind a
 | Homepage | Dashboard | Docker | `3000` | Central dashboard for launching all web apps |
 | Joplin Server | Note taking | Docker | `22300` | Self-hosted notes and to-do application |
 | Paperless-ngx | Document Management | Docker | `8000` | Open-source document management and archiving system |
- 
+| Dawarich | Location Tracking | Docker | `3002` | Self-hosted location tracking and personal travel history |
+| Immich | Photo Management | Docker | `2283` | Self-hosted photo and video management with external library support |
+
 ---
  
 ## 🔮 Planned Services
