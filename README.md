@@ -112,10 +112,6 @@ Debian-Home-Server-Documentation/
 │   ├── README.md
 │   ├── home-server-backup.sh
 │   └── home-server-backup.service
-├── fan-control/
-│   ├── README.md
-│   ├── dell-bios-fan-control.service
-│   └── m4800-fan-control.service
 ├── nextcloud-preview/
 │   ├── README.md
 │   ├── nextcloud-preview.service
