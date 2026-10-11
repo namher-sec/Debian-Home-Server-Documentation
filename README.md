@@ -61,7 +61,6 @@ This repository documents the server's **architecture, storage, networking, Dock
 | ⚙️ [Services](services/) | Self-hosted services and their current configuration |
 | ⚙️ [Security and Optimizations](security-and-optimizations/) | Security and Optimizations performed on the server |
 | 💾 [Backup](backup/) | Automated backups, systemd configuration, and restore procedures |
-| 🌡️ [Fan Control](fan-control/) | Dell M4800 fan control and related systemd services |
 | ☁️ [Nextcloud Preview](nextcloud-preview/) | Automated Nextcloud preview generation |
 | 🔧 [Troubleshooting](troubleshooting/) | Common problems, diagnostics, and useful commands |
 | 🔄 [Rebuild](rebuild/) | Complete server rebuild and recovery procedure |
