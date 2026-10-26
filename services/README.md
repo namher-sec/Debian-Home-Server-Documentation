@@ -19,12 +19,14 @@ All services are containerized using Docker and Docker Compose, managed behind a
 | Paperless-ngx | Document Management | Docker | `8000` | Open-source document management and archiving system |
 | Dawarich | Location Tracking | Docker | `3002` | Self-hosted location tracking and personal travel history |
 | Immich | Photo Management | Docker | `2283` | Self-hosted photo and video management with external library support |
+| NetAlertX | network | Docker | `20211` | network monitoring and device discovery tool |
 
 ---
  
 ## 🔮 Planned Services
  
 - [ ] RSS reader — self-hosted RSS feed aggregation
+- [ ] BookStack
 ---
 
 
